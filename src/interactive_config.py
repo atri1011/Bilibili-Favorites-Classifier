@@ -42,9 +42,14 @@ class InteractiveConfig:
         
         # 检查是否有保存的配置
         saved_config = self.config_manager.load_ai_config()
-        if saved_config and Confirm.ask("检测到已保存的AI配置，是否使用？"):
-            console.print("✅ 使用已保存的AI配置", style="green")
-            return saved_config
+        if saved_config:
+            # 验证保存的配置是否完整
+            required_keys = ["openai_api_key", "openai_base_url", "model_name"]
+            if all(key in saved_config for key in required_keys) and Confirm.ask("检测到已保存的AI配置，是否使用？"):
+                console.print("✅ 使用已保存的AI配置", style="green")
+                return saved_config
+            else:
+                console.print("⚠️  检测到不完整的旧版AI配置，需要重新配置。", style="yellow")
         
         ai_config = {}
         

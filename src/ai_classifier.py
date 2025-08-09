@@ -18,8 +18,8 @@ class AIClassifier:
         """
         self.config = ai_config
         self.client = openai.AsyncOpenAI(
-            api_key=self.config["openai_api_key"],
-            base_url=self.config["openai_base_url"],
+            api_key=self.config.get("openai_api_key"),
+            base_url=self.config.get("openai_base_url"),
         )
 
     async def classify_video(self, video: VideoInfo, target_folders: List[str]) -> Optional[str]:
@@ -49,7 +49,7 @@ class AIClassifier:
 
         try:
             response = await self.client.chat.completions.create(
-                model=self.config["model_name"],
+                model=self.config.get("model_name", "gpt-3.5-turbo"),
                 messages=messages,
             )
             if response.choices and response.choices[0].message.content:
@@ -104,7 +104,7 @@ class AIClassifier:
 
         try:
             response = await self.client.chat.completions.create(
-                model=self.config["model_name"],
+                model=self.config.get("model_name", "gpt-3.5-turbo"),
                 messages=messages,
                 response_format={"type": "json_object"},
             )
