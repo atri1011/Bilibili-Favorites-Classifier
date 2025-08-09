@@ -1,5 +1,5 @@
 {
-  "api_key": "YOUR_OPENAI_API_KEY",
-  "base_url": "YOUR_OPENAI_BASE_URL",
-  "model": "YOUR_MODEL_NAME"
+  "openai_api_key": "YOUR_OPENAI_API_KEY",
+  "openai_base_url": "YOUR_OPENAI_BASE_URL",
+  "model_name": "YOUR_MODEL_NAME"
 }
