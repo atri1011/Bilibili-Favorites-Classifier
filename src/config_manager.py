@@ -205,17 +205,24 @@ AI_BATCH_SIZE=10
             raise
 
     def load_ai_config(self) -> Dict[str, str]:
-        """从JSON文件加载AI配置"""
-        if not os.path.exists(self.ai_config_file):
+        """从项目根目录的JSON文件加载AI配置"""
+        # 定位项目根目录 (Bilibili-Favorites-Classifier)
+        project_root = Path(__file__).parent.parent
+        config_path = project_root / self.ai_config_file
+
+        logger.info(f"Attempting to load AI config from project root: {config_path}")
+
+        if not config_path.exists():
+            logger.warning(f"AI config file '{self.ai_config_file}' not found in project root: {config_path}")
             return {}
 
         try:
-            with open(self.ai_config_file, 'r', encoding='utf-8') as f:
+            with open(config_path, 'r', encoding='utf-8') as f:
                 config = json.load(f)
-            logger.info(f"AI configuration loaded from {self.ai_config_file}")
+            logger.info(f"AI configuration loaded successfully from {config_path}")
             return config
         except Exception as e:
-            logger.warning(f"Failed to load AI config: {e}")
+            logger.warning(f"Failed to load or parse AI config from {config_path}: {e}")
             return {}
 
     def load_bili_credential(self) -> Optional[BiliCredential]:
