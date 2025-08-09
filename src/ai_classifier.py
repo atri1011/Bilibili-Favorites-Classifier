@@ -1,5 +1,6 @@
 import openai
 import json
+import re
 from typing import List, Optional
 from models import VideoInfo
 from config_manager import ConfigManager
@@ -110,13 +111,22 @@ class AIClassifier:
             )
             if response.choices and response.choices[0].message.content:
                 content = response.choices[0].message.content
+                
+                # 提取被```json ...```包裹的JSON内容
+                match = re.search(r'```json\s*([\s\S]*?)\s*```', content, re.DOTALL)
+                if match:
+                    json_str = match.group(1)
+                else:
+                    json_str = content
+
                 try:
-                    result_data = json.loads(content)
+                    result_data = json.loads(json_str)
                     classifications = None
                     if isinstance(result_data, list):
                         classifications = result_data
                     elif isinstance(result_data, dict):
-                        for value in result_data.values():
+                        # 兼容返回格式为 {"classifications": [...]} 的情况
+                        for key, value in result_data.items():
                             if isinstance(value, list):
                                 classifications = value
                                 break
