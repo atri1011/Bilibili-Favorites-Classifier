@@ -69,28 +69,31 @@ class ConfigManager:
         if not vmid:
             raise ValueError("Could not extract user ID from cookie")
 
-        # 尝试从环境变量获取OpenAI配置
+        # 1. 从环境变量加载
         openai_api_key = os.getenv("OPENAI_API_KEY")
         openai_base_url = os.getenv("OPENAI_BASE_URL")
         model_name = os.getenv("OPENAI_MODEL")
 
-        # 如果环境变量中没有，尝试从保存的AI配置加载
-        if not openai_api_key:
-            saved_ai_config = self.load_ai_config()
-            if saved_ai_config:
+        # 2. 如果环境变量不完整，从 ai_config.json 加载
+        saved_ai_config = self.load_ai_config()
+        if saved_ai_config:
+            if not openai_api_key:
                 openai_api_key = saved_ai_config.get("openai_api_key")
-                openai_base_url = openai_base_url or saved_ai_config.get("openai_base_url", "https://api.openai.com/v1")
-                model_name = model_name or saved_ai_config.get("model_name", "gpt-3.5-turbo")
-                logger.info("Loaded AI configuration from saved file")
-            else:
-                raise ValueError("OPENAI_API_KEY not found in environment variables or saved configuration")
+            if not openai_base_url:
+                openai_base_url = saved_ai_config.get("openai_base_url")
+            if not model_name:
+                model_name = saved_ai_config.get("model_name")
+            logger.info("Loaded AI configuration from saved file to supplement environment variables.")
 
+        # 3. 验证必需的配置
         if not openai_api_key:
-            raise ValueError("OPENAI_API_KEY is required")
+            raise ValueError("OPENAI_API_KEY is required but not found in environment variables or ai_config.json")
 
-        # 设置默认值
-        openai_base_url = openai_base_url or "https://api.openai.com/v1"
-        model_name = model_name or "gpt-3.5-turbo"
+        # 4. 设置默认值
+        if not openai_base_url:
+            openai_base_url = "https://api.openai.com/v1"
+        if not model_name:
+            model_name = "gpt-3.5-turbo"
 
         # 创建配置对象
         config = Config(
