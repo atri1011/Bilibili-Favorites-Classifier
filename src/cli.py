@@ -15,19 +15,11 @@ from models import ClassificationResult, FavoriteFolder, VideoInfo
 from interactive_config import InteractiveConfig
 
 
-@click.group()
+@click.command()
 def cli():
     """
     Bilibili-Favorites-Classifier: 一个使用 AI 对 Bilibili 收藏夹进行分类的工具。
-    """
-    pass
-
-
-@cli.command()
-@click.pass_context
-def classify(ctx: click.Context):
-    """
-    对 Bilibili 收藏夹中的视频进行 AI 智能分类。
+    主要功能是：对 Bilibili 收藏夹中的视频进行 AI 智能分类。
     """
     try:
         asyncio.run(classify_async())
@@ -148,19 +140,39 @@ async def classify_async():
             console.print(f"[yellow]收藏夹 “{selected_folder.title}” 中没有视频。[/yellow]")
             return
 
-        # 5. 使用进度条进行分类
+        # 5. 获取批处理大小并进行分类
+        batch_size = IntPrompt.ask(
+            "\n[bold green]您想一次分类多少个视频？ (建议 5-20)[/bold green]",
+            default=10
+        )
+        
+        # 将视频列表切分为批次
+        video_batches = [videos[i:i + batch_size] for i in range(0, len(videos), batch_size)]
+        
         classification_results: List[ClassificationResult] = []
-        console.print(f"[cyan]准备对 {len(videos)} 个视频进行分类，请稍候...[/cyan]")
+        console.print(f"\n[cyan]准备对 {len(videos)} 个视频进行分类（每批 {batch_size} 个），请稍候...[/cyan]")
 
         with Progress(console=console) as progress:
-            task = progress.add_task("[green]AI 分类中...", total=len(videos))
-            for video in videos:
-                result = await ai_classifier.classify_video(video, target_folders=target_folder_names)
-                if result:
-                    classification_results.append(
-                        ClassificationResult(video=video, category=result)
-                    )
-                progress.update(task, advance=1, description=f"[green]AI 分类中... {video.title[:30]}...")
+            task = progress.add_task("[green]AI 批量分类中...", total=len(videos))
+            
+            for i, batch in enumerate(video_batches):
+                progress.update(task, description=f"[green]正在处理第 {i+1}/{len(video_batches)} 批...[/green]")
+                
+                # 调用新的批量分类方法
+                batch_results = await ai_classifier.batch_classify_videos(batch, target_folders=target_folder_names)
+                
+                # 处理批量返回的结果
+                for video, category in zip(batch, batch_results):
+                    if category:
+                        classification_results.append(
+                            ClassificationResult(video=video, category=category)
+                        )
+                    else:
+                        # 可以在这里添加处理分类失败的逻辑
+                        console.print(f"[yellow]警告：视频 '{video.title}' 分类失败，已跳过。[/yellow]")
+
+                # 更新进度条
+                progress.update(task, advance=len(batch))
 
         console.print("\n[bold green]🎉 所有视频分类完成！[/bold green]")
 
