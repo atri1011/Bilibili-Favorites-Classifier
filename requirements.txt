@@ -1,0 +1,12 @@
+# 核心依赖
+click
+rich
+python-dotenv
+pydantic
+httpx
+openai
+
+# B站认证相关
+qrcode
+Pillow
+asyncio-throttle
