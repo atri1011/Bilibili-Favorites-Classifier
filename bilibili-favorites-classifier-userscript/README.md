@@ -19,7 +19,7 @@
 
 **安装本脚本**:
 
-    *   **从 GitHub 安装**: [点击此处直接安装](https://github.com/atri1011/Bilibili-Favorites-Classifier/edit/main/bilibili-favorites-classifier-userscript/bilibili-favorites-classifier.user.js) 
+ 1.   *   **从 GitHub 安装**: [点击此处直接安装](https://github.com/atri1011/Bilibili-Favorites-Classifier/edit/main/bilibili-favorites-classifier-userscript/bilibili-favorites-classifier.user.js) 
 
 ## 📖 使用说明 (Usage)
 
