@@ -17,13 +17,9 @@
 
 ## 🚀 安装步骤 (Installation)
 
-1.  **安装用户脚本管理器**:
-    你首先需要一个用户脚本管理器来运行此脚本。推荐使用 **Tampermonkey**。
-    *   [点击此处访问 Tampermonkey 官网并安装](https://www.tampermonkey.net/)
+**安装本脚本**:
 
-2.  **安装本脚本**:
-    *   **从 Greasy Fork 安装 (推荐)**: [点击此处安装](https://greasyfork.org/zh-CN/scripts/your-script-id)  _(提示: 部署后请替换为你的脚本链接)_
-    *   **从 GitHub 安装**: [点击此处直接安装](https://github.com/your-username/your-repo/raw/main/bilibili-favorites-classifier-userscript/bilibili-favorites-classifier.user.js) _(提示: 部署后请替换为你的仓库链接)_
+    *   **从 GitHub 安装**: [点击此处直接安装](https://github.com/atri1011/Bilibili-Favorites-Classifier/edit/main/bilibili-favorites-classifier-userscript/bilibili-favorites-classifier.user.js) 
 
 ## 📖 使用说明 (Usage)
 
