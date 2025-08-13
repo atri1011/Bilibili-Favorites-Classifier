@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Bilibili 收藏夹 AI 分类助手 (新版UI)
 // @namespace    http://tampermonkey.net/
-// @version      1.2.4
+// @version      1.2.6
 // @description  利用AI（GPT）智能、批量地整理Bilibili收藏夹，采用全新的悬浮按钮和侧滑面板UI，提供流畅的交互体验，支持多源收藏夹。
 // @author       Roo
 // @match        *://space.bilibili.com/*
@@ -214,7 +214,6 @@
             this.cacheDOMElements();
             this.setupEventListeners();
             this.loadSettings();
-            // 不再需要外部注入
         },
 
         cacheDOMElements() {
@@ -227,13 +226,15 @@
             this.saveSettingsBtn = document.getElementById('bfc-save-settings-btn');
             this.apiKeyInput = document.getElementById('bfc-api-key');
             this.apiHostInput = document.getElementById('bfc-api-host');
+            this.aiProviderSelect = document.getElementById('bfc-ai-provider');
             this.sourceFoldersContainer = document.getElementById('bfc-source-folders');
             this.targetFoldersContainer = document.getElementById('bfc-target-folders');
             this.logContainer = document.getElementById('bfc-log');
             this.modelSelect = document.getElementById('bfc-model-select');
             this.customModelInput = document.getElementById('bfc-custom-model');
             this.customModelGroup = document.getElementById('bfc-custom-model-group');
-            this.batchCreateBtn = document.getElementById('bfc-batch-create-btn'); // 新增缓存
+            this.batchCreateBtn = document.getElementById('bfc-batch-create-btn');
+            this.batchSizeInput = document.getElementById('batch-size-input');
         },
 
         injectFAB() {
@@ -260,11 +261,23 @@
                             <label for="bfc-api-host">API Host</label>
                             <input type="text" id="bfc-api-host" class="bfc-input" placeholder="例如: https://api.openai.com">
                         </div>
+                        <!-- AI 提供商选择 -->
+                        <div class="bfc-form-group">
+                            <label for="bfc-ai-provider">AI 提供商</label>
+                            <select id="bfc-ai-provider" class="bfc-select">
+                                <option value="openai">OpenAI</option>
+                                <option value="zhipu">智谱AI</option>
+                            </select>
+                        </div>
                          <div class="bfc-form-group">
                             <label for="bfc-model-select">AI 模型</label>
                             <select id="bfc-model-select" class="bfc-select">
                                 <option value="gpt-3.5-turbo">gpt-3.5-turbo</option>
                                 <option value="gpt-4">gpt-4</option>
+                               <no_thinking>
+<write_to_file>
+<path>bilibili-favorites-classifier.user.js</path>
+<content>
                                 <option value="gpt-4o">gpt-4o</option>
                                 <option value="custom">自定义</option>
                             </select>
@@ -283,6 +296,10 @@
                         <div class="bfc-form-group">
                             <label for="bfc-target-folders">选择目标收藏夹 (可多选)</label>
                             <div id="bfc-target-folders" class="bfc-checkbox-group"></div>
+                        </div>
+                        <div class="bfc-form-group">
+                            <label for="batch-size-input">单次处理视频数</label>
+                            <input type="number" id="batch-size-input" class="bfc-input" value="10">
                         </div>
                         <button id="bfc-start-btn" class="bfc-button">开始分类</button>
                         <button id="bfc-batch-create-btn" class="bfc-button">一键创建推荐收藏夹</button>
@@ -308,12 +325,13 @@
                 this.customModelGroup.classList.toggle('bfc-hidden', e.target.value !== 'custom');
             });
             this.startBtn.addEventListener('click', () => App.start());
-            this.batchCreateBtn.addEventListener('click', () => BatchCreator.start()); // 新增事件监听
+            this.batchCreateBtn.addEventListener('click', () => BatchCreator.start());
         },
 
         loadSettings() {
             this.apiKeyInput.value = GM_getValue('apiKey', '');
             this.apiHostInput.value = GM_getValue('apiHost', 'https://api.openai.com');
+            this.aiProviderSelect.value = GM_getValue('aiProvider', 'openai');
             const apiModel = GM_getValue('apiModel', 'gpt-3.5-turbo');
             const customApiModel = GM_getValue('customApiModel', '');
             this.modelSelect.value = apiModel;
@@ -326,6 +344,7 @@
         saveSettings() {
             GM_setValue('apiKey', this.apiKeyInput.value);
             GM_setValue('apiHost', this.apiHostInput.value);
+            GM_setValue('aiProvider', this.aiProviderSelect.value);
             const selectedModel = this.modelSelect.value;
             GM_setValue('apiModel', selectedModel);
             if (selectedModel === 'custom') {
@@ -371,8 +390,9 @@
                 .map(cb => cb.value);
             const targetFavoriteIds = Array.from(this.targetFoldersContainer.querySelectorAll('input[type="checkbox"]:checked'))
                 .map(cb => cb.value);
+            const batchSize = parseInt(this.batchSizeInput.value, 10) || 10;
             const csrf = document.cookie.match(/bili_jct=([^;]+)/) ? document.cookie.match(/bili_jct=([^;]+)/)[1] : null;
-            return { apiKey, apiHost, modelName, sourceFavoriteIds, targetFavoriteIds, csrf };
+            return { apiKey, apiHost, modelName, sourceFavoriteIds, targetFavoriteIds, csrf, batchSize };
         },
 
         log(message, type = 'info') {
@@ -398,26 +418,17 @@
             }
         },
 
-        async getFavoriteVideos(media_id, ps = 20) {
-            let allVideos = [];
-            let pageNum = 1;
-            let hasMore = true;
-            while (hasMore) {
-                const url = `https://api.bilibili.com/x/v3/fav/resource/list?media_id=${media_id}&pn=${pageNum}&ps=${ps}&order=mtime`;
-                const response = await fetch(url, { headers: { 'Accept': 'application/json' }, credentials: 'include' });
-                const data = await response.json();
-                if (data.code === 0 && data.data && data.data.medias) {
-                    allVideos = allVideos.concat(data.data.medias);
-                    hasMore = data.data.has_more;
-                    pageNum++;
-                } else {
-                    hasMore = false;
-                    if (data.code !== 0) {
-                        throw new Error(`获取收藏夹视频失败 (Code: ${data.code}): ${data.message}`);
-                    }
-                }
+        async getFavoriteVideos(media_id, ps = 20, pageNum = 1) {
+            const url = `https://api.bilibili.com/x/v3/fav/resource/list?media_id=${media_id}&pn=${pageNum}&ps=${ps}&order=mtime`;
+            const response = await fetch(url, { headers: { 'Accept': 'application/json' }, credentials: 'include' });
+            const data = await response.json();
+            if (data.code === 0 && data.data) {
+                return {
+                    videos: data.data.medias || [],
+                    hasMore: data.data.has_more,
+                };
             }
-            return allVideos;
+            throw new Error(`获取收藏夹视频失败 (Code: ${data.code || 'N/A'}): ${data.message}`);
         },
 
         async moveVideo(resourceId, targetMediaId, fromMediaId, csrf) {
@@ -470,7 +481,74 @@
 
     const AIClassifier = {
         classify(video, targetFolders, apiKey, apiHost, modelName) {
+            const aiProvider = GM_getValue('aiProvider', 'openai');
+            // 根据AI提供商选择不同的API调用逻辑
+            if (aiProvider === 'zhipu') {
+                // 调用智谱AI
+                return this._callZhipuAI(apiKey, { video, targetFolders });
+            } else {
+                // 调用OpenAI或兼容的API
+                return new Promise((resolve, reject) => {
+                    const prompt = `
+                        我有一个B站收藏的视频，信息如下：
+                        - 标题: "${video.title}"
+                        - 简介: "${video.intro}"
+                        - UP主: "${video.upper.name}"
+
+                        请从以下目标收藏夹列表中，选择一个最合适的收藏夹来存放这个视频。
+                        目标收藏夹列表:
+                        ${targetFolders.map(f => `- ${f.title}`).join('\n')}
+
+                        请仅返回最合适的收藏夹的名称，不要添加任何多余的解释或标点符号。
+                    `;
+                    GM_xmlhttpRequest({
+                        method: "POST",
+                        url: `${apiHost}/v1/chat/completions`,
+                        headers: {
+                            "Content-Type": "application/json",
+                            "Authorization": `Bearer ${apiKey}`
+                        },
+                        data: JSON.stringify({
+                            model: modelName,
+                            messages: [{ role: "user", content: prompt }],
+                            temperature: 0.5,
+                        }),
+                        onload: function(response) {
+                            if (response.status === 200) {
+                                try {
+                                    const result = JSON.parse(response.responseText);
+                                    const folderName = result.choices[0].message.content.trim();
+                                    resolve(folderName);
+                                } catch (e) {
+                                    reject(new Error(`解析API响应失败: ${e.message}`));
+                                }
+                            } else {
+                                 try {
+                                    const errorInfo = JSON.parse(response.responseText);
+                                    reject(new Error(`API请求失败 (状态: ${response.status}): ${errorInfo.error.message}`));
+                                } catch (e) {
+                                    reject(new Error(`API请求失败 (状态: ${response.status})，且无法解析错误响应。`));
+                                }
+                            }
+                        },
+                        onerror: function(response) {
+                            reject(new Error(`网络请求错误: ${response.statusText}`));
+                        }
+                    });
+                });
+            }
+        },
+        /**
+         * 调用智谱AI的API进行视频分类
+         * @param {string} apiKey - 智谱AI的API Key
+         * @param {object} videoInfo - 包含视频信息和目标收藏夹列表的对象
+         * @param {object} videoInfo.video - 视频对象
+         * @param {Array<object>} videoInfo.targetFolders - 目标收藏夹列表
+         * @returns {Promise<string>} - 返回AI推荐的收藏夹名称
+         */
+        _callZhipuAI(apiKey, videoInfo) {
             return new Promise((resolve, reject) => {
+                const { video, targetFolders } = videoInfo;
                 const prompt = `
                     我有一个B站收藏的视频，信息如下：
                     - 标题: "${video.title}"
@@ -483,24 +561,28 @@
 
                     请仅返回最合适的收藏夹的名称，不要添加任何多余的解释或标点符号。
                 `;
+
                 GM_xmlhttpRequest({
                     method: "POST",
-                    url: `${apiHost}/v1/chat/completions`,
+                    url: 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
                     headers: {
                         "Content-Type": "application/json",
                         "Authorization": `Bearer ${apiKey}`
                     },
                     data: JSON.stringify({
-                        model: modelName,
+                        model: "glm-4",
                         messages: [{ role: "user", content: prompt }],
-                        temperature: 0.5,
                     }),
                     onload: function(response) {
                         if (response.status === 200) {
                             try {
                                 const result = JSON.parse(response.responseText);
-                                const folderName = result.choices[0].message.content.trim();
-                                resolve(folderName);
+                                if (result.choices && result.choices.length > 0 && result.choices[0].message && result.choices[0].message.content) {
+                                    const folderName = result.choices[0].message.content.trim();
+                                    resolve(folderName);
+                                } else {
+                                    reject(new Error('API响应格式不正确，缺少有效的回复内容。'));
+                                }
                             } catch (e) {
                                 reject(new Error(`解析API响应失败: ${e.message}`));
                             }
@@ -589,22 +671,47 @@
 
         async start() {
             UIManager.log('开始分类任务...', 'info');
-            const { apiKey, apiHost, modelName, sourceFavoriteIds, targetFavoriteIds, csrf } = UIManager.getUserInput();
+            const { apiKey, apiHost, modelName, sourceFavoriteIds, targetFavoriteIds, csrf, batchSize } = UIManager.getUserInput();
             if (!apiKey || !apiHost || !modelName || sourceFavoriteIds.length === 0 || targetFavoriteIds.length === 0 || !csrf) {
                 UIManager.log('请检查设置：API Key/Host/模型, 源/目标收藏夹 和 CSRF Token 不能为空', 'error');
                 return;
             }
+
             const targetFolders = this.allFolders.filter(f => targetFavoriteIds.includes(f.id.toString()));
             const sourceFolders = this.allFolders.filter(f => sourceFavoriteIds.includes(f.id.toString()));
+            let videosToProcess = [];
+
             try {
-                for (const sourceId of sourceFavoriteIds) {
-                    const sourceFolder = sourceFolders.find(f => f.id.toString() === sourceId);
-                    if (!sourceFolder) continue;
+                for (const sourceFolder of sourceFolders) {
+                    if (videosToProcess.length >= batchSize) break;
+
                     UIManager.log(`正在从源收藏夹 [${sourceFolder.title}] 获取视频...`);
-                    const videos = await BilibiliAPI.getFavoriteVideos(sourceId);
-                    UIManager.log(`从 [${sourceFolder.title}] 获取到 ${videos.length} 个视频, 开始处理...`, 'info');
-                    await this.handleMoves(videos, targetFolders, { apiKey, apiHost, modelName, csrf, sourceMediaId: sourceId });
+                    let pageNum = 1;
+                    let hasMore = true;
+
+                    while (hasMore && videosToProcess.length < batchSize) {
+                        const remainingNeeded = batchSize - videosToProcess.length;
+                        const pageSize = Math.min(20, remainingNeeded); // B站API单页最大20
+
+                        const { videos, hasMore: newHasMore } = await BilibiliAPI.getFavoriteVideos(sourceFolder.id, pageSize, pageNum);
+
+                        if (videos.length > 0) {
+                             // 为每个视频对象添加其原始收藏夹ID
+                            const videosWithSource = videos.map(v => ({...v, sourceMediaId: sourceFolder.id }));
+                            videosToProcess.push(...videosWithSource);
+                        }
+                        hasMore = newHasMore;
+                        pageNum++;
+                    }
                 }
+
+                if (videosToProcess.length === 0) {
+                    UIManager.log('在选定的源收藏夹中没有找到任何视频。', 'info');
+                    return;
+                }
+                 UIManager.log(`总共获取到 ${videosToProcess.length} 个视频, 开始处理...`, 'info');
+                await this.handleMoves(videosToProcess, targetFolders, { apiKey, apiHost, modelName, csrf });
+
                 UIManager.log('所有视频处理完毕！', 'success');
             } catch (error) {
                 UIManager.log(`任务执行失败: ${error.message}`, 'error');
@@ -614,18 +721,22 @@
         async handleMoves(videos, targetFolders, config) {
             for (const video of videos) {
                 try {
-                    if (targetFolders.some(tf => tf.id.toString() === config.sourceMediaId)) {
+                     // 检查视频是否已在目标收藏夹之一
+                    if (targetFolders.some(tf => tf.id === video.sourceMediaId)) {
                         UIManager.log(`视频「${video.title}」已在目标收藏夹中，跳过。`, 'info');
                         continue;
                     }
-
                     UIManager.log(`正在为视频「${video.title}」请求AI分类...`);
                     const predictedFolderName = await AIClassifier.classify(video, targetFolders, config.apiKey, config.apiHost, config.modelName);
                     UIManager.log(`AI建议分类到: 「${predictedFolderName}」`);
 
                     const targetFolder = targetFolders.find(f => f.title === predictedFolderName);
                     if (targetFolder) {
-                        await BilibiliAPI.moveVideo(video.id, targetFolder.id, config.sourceMediaId, config.csrf);
+                         if (targetFolder.id === video.sourceMediaId) {
+                            UIManager.log(`视频「${video.title}」已在「${targetFolder.title}」中，无需移动。`, 'info');
+                            continue;
+                        }
+                        await BilibiliAPI.moveVideo(video.id, targetFolder.id, video.sourceMediaId, config.csrf);
                         UIManager.log(`成功将「${video.title}」移动到「${targetFolder.title}」`, 'success');
                     } else {
                         UIManager.log(`未找到匹配的目标收藏夹: 「${predictedFolderName}」, 跳过移动`, 'error');

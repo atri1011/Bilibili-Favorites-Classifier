@@ -17,32 +17,38 @@
 
 ## 🚀 安装步骤 (Installation)
 
-1.  **安装用户脚本管理器**:
-    你首先需要一个用户脚本管理器来运行此脚本。推荐使用 **Tampermonkey**。
-    *   [点击此处访问 Tampermonkey 官网并安装](https://www.tampermonkey.net/)
+**安装本脚本**:
 
-2.  **安装本脚本**:
-    *   **从 Greasy Fork 安装 (推荐)**: [点击此处安装](https://greasyfork.org/zh-CN/scripts/your-script-id)  _(提示: 部署后请替换为你的脚本链接)_
-    *   **从 GitHub 安装**: [点击此处直接安装](https://github.com/your-username/your-repo/raw/main/bilibili-favorites-classifier-userscript/bilibili-favorites-classifier.user.js) _(提示: 部署后请替换为你的仓库链接)_
+1.    *  **从 GitHub 安装**: [点击此处直接安装](https://github.com/atri1011/Bilibili-Favorites-Classifier/edit/main/bilibili-favorites-classifier-userscript/bilibili-favorites-classifier.user.js) 
 
 ## 📖 使用说明 (Usage)
 
 1.  **登录 Bilibili**: 确保你已登录 Bilibili 账号，并进入“我的收藏”页面 (`https://space.bilibili.com/你的UID/favlist`)。
-2.  **启动分类助手**: 点击页面右下角出现的粉色悬浮按钮 `📺✨` 以展开操作面板。
-3.  **配置 API Key 与模型**:
+2.  **启动分类助手**: 点击页面右下角出现的粉色悬浮按钮 `AI` 以展开操作面板。
+3.  **配置 AI 提供商与 API Key**:
     *   点击面板顶部的 `⚙️` 设置图标。
-    *   在 "API Key" 输入框中填入你的 OpenAI API Key。
-    *   在 **"AI 模型"** 下拉菜单中，你可以选择一个预设模型（如 `gpt-4o`）。
-    *   如果你想使用其他模型（例如 `moonshot-v1-8k` 或其他兼容 OpenAI API 格式的模型），请在下拉菜单中选择 **`custom`**，然后在下方出现的输入框中填入你的自定义模型名称。
+    *   **选择 AI 提供商**:
+        *   **OpenAI**: 如果你使用 OpenAI 或其他兼容 OpenAI 接口的第三方服务（如 Moonshot, Groq 等）。
+        *   **智谱AI**: 如果你使用智谱AI（Zhipu AI）。
+    *   **填写 API Key**:
+        *   在 "API Key" 输入框中填入你所选提供商的 API Key。
+        *   **如何获取智谱AI Key**: 请前往 [智谱AI开放平台](https://open.bigmodel.cn/) 注册并创建 API Key。
+    *   **配置 API Host (可选)**:
+        *   **OpenAI**: 默认是 `https://api.openai.com`。如果你使用第三方代理或服务，请修改为对应的地址。
+        *   **智谱AI**: 此字段可以留空，脚本已内置其官方地址。
+    *   **选择 AI 模型**:
+        *   在 "AI 模型" 下拉菜单中，你可以选择一个预设模型（如 `gpt-4o`）。
+        *   如果你想使用其他模型（例如 `glm-4` 或其他兼容模型），请在下拉菜单中选择 **`custom`**，然后在下方出现的输入框中填入你的自定义模型名称。
 4.  **选择源收藏夹 (可多选)**:
-    *   在“① 选择源收藏夹”区域，**勾选一个或多个** 你想要整理的收藏夹。现在可以一次性处理来自多个源的视频了！
+    *   在“选择源收藏夹”区域，**勾选一个或多个** 你想要整理的收藏夹。现在可以一次性处理来自多个源的视频了！
 5.  **选择目标收藏夹**:
-    *   在“② 选择目标收藏夹”区域，勾选一个或多个你希望作为视频分类目标的收藏夹。
-6.  **开始分析**:
-    *   点击“③ 开始分类”按钮，AI 将开始分析所选源收藏夹中的视频。
-7.  **预览并执行**:
-    *   分析完成后，会弹出一个确认框，详细列出每个视频将被移动到哪个目标收藏夹。
-    *   请仔细检查分类计划，如果满意，点击“确定”按钮，脚本就会开始为你移动视频。
+    *   在“选择目标收藏夹”区域，勾选一个或多个你希望作为视频分类目标的收藏夹。
+6.  **开始分类**:
+    *   点击“开始分类”按钮，AI 将开始分析所选源收藏夹中的视频。
+7.  **处理视频**:
+    *   脚本会根据你设置的“单次处理视频数”来获取并处理视频。
+    *   AI 会对每个视频进行分析，并自动将其移动到最匹配的目标收藏夹中。
+    *   你可以在面板的日志区域看到详细的处理过程。
 
 ## ⚠️ 注意事项 (Disclaimer)
 
